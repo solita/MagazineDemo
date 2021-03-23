@@ -9,7 +9,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     @IBOutlet weak private var previewView: UIView!
 
     private let session = AVCaptureSession()
-    private var previewLayer: AVCaptureVideoPreviewLayer! = nil
+    var previewLayer: AVCaptureVideoPreviewLayer! = nil
     private let videoDataOutput = AVCaptureVideoDataOutput()
     
     private let videoDataOutputQueue = DispatchQueue(label: "VideoDataOutput", qos: .userInitiated, attributes: [], autoreleaseFrequency: .workItem)
@@ -18,10 +18,15 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         // to be implemented in the subclass
     }
     
+    //var filter: CIFilter!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print("About to set AV capture")
+        //let whiteColor = CIColor(red: 1.0, green: 1.0, blue: 1.0)
+        //filter = CIFilter(name: "CIColorMonochrome", parameters: ["inputColor": whiteColor, "inputIntensity": 1.0])
+        
+        print("About to set up AV capture")
         setupAVCapture()
     }
 
@@ -58,11 +63,31 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             session.commitConfiguration()
             return
         }
+        
         let captureConnection = videoDataOutput.connection(with: .video)
+        
+        if let conn = captureConnection {
+            if conn.isVideoOrientationSupported {
+                let deviceOrientation = UIDevice.current.orientation
+                var captureOrientation: AVCaptureVideoOrientation = .landscapeLeft
+                if deviceOrientation == .landscapeRight {
+                    captureOrientation = .landscapeRight
+                }
+                conn.videoOrientation = captureOrientation
+                /*
+                if let captureOrientation = AVCaptureVideoOrientation(rawValue: UIDevice.current.orientation.rawValue) {
+                    conn.videoOrientation = captureOrientation
+                } else {
+                    conn.videoOrientation = .portrait
+                }
+                */
+            }
+        }
+        
         // Always process the frames
         captureConnection?.isEnabled = true
         do {
-            try  videoDevice!.lockForConfiguration()
+            try videoDevice!.lockForConfiguration()
             let dimensions = CMVideoFormatDescriptionGetDimensions((videoDevice?.activeFormat.formatDescription)!)
             bufferSize.width = CGFloat(dimensions.width)
             bufferSize.height = CGFloat(dimensions.height)
@@ -77,14 +102,13 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         previewLayer.frame = rootLayer.bounds
         rootLayer.addSublayer(previewLayer)
         
-        print("Done setting AV capture")
+        print("Done setting up AV capture")
     }
     
     func startCaptureSession() {
         session.startRunning()
     }
     
-    // Clean up capture setup
     func teardownAVCapture() {
         previewLayer.removeFromSuperlayer()
         previewLayer = nil
