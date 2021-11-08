@@ -37,12 +37,14 @@ class RecognitionViewController: ViewController {
     func setupVision() -> NSError? {
         let error: NSError! = nil
         
+        let modelName = "bitti-2021-03-24-18-03-32"
+        
         /*
         let modelConfiguration = MLModelConfiguration()
         modelConfiguration.computeUnits = .cpuAndGPU
         */
         
-        guard let modelURL = Bundle.main.url(forResource: "bitti", withExtension: "mlmodelc") else {
+        guard let modelURL = Bundle.main.url(forResource: modelName, withExtension: "mlmodelc") else {
             return NSError(domain: "RecognitionViewController", code: -1, userInfo: [NSLocalizedDescriptionKey: "Model file is missing"])
         }
         

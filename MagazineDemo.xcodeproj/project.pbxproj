@@ -15,6 +15,7 @@
 		6F089ABE2574F7010097D570 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6F089ABC2574F7010097D570 /* LaunchScreen.storyboard */; };
 		6F089AC8257502D00097D570 /* RecognitionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F089AC7257502D00097D570 /* RecognitionViewController.swift */; };
 		6F175B9126021EAD00A0F088 /* bitti.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 6F175B9026021EAD00A0F088 /* bitti.mlmodel */; };
+		6F1C9B92260CAAFF00CCE60A /* bitti-2021-03-24-18-03-32.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 6F1C9B91260CAAFF00CCE60A /* bitti-2021-03-24-18-03-32.mlmodel */; };
 		6F3CA58925C4833600422925 /* UIImage+CVPixelBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3CA58825C4833600422925 /* UIImage+CVPixelBuffer.swift */; };
 		6F3CA58C25C4838800422925 /* CGImage+CVPixelBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3CA58B25C4838800422925 /* CGImage+CVPixelBuffer.swift */; };
 /* End PBXBuildFile section */
@@ -30,6 +31,7 @@
 		6F089ABF2574F7010097D570 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6F089AC7257502D00097D570 /* RecognitionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecognitionViewController.swift; sourceTree = "<group>"; };
 		6F175B9026021EAD00A0F088 /* bitti.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = bitti.mlmodel; sourceTree = "<group>"; };
+		6F1C9B91260CAAFF00CCE60A /* bitti-2021-03-24-18-03-32.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = "bitti-2021-03-24-18-03-32.mlmodel"; sourceTree = "<group>"; };
 		6F3CA58825C4833600422925 /* UIImage+CVPixelBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIImage+CVPixelBuffer.swift"; sourceTree = "<group>"; };
 		6F3CA58B25C4838800422925 /* CGImage+CVPixelBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGImage+CVPixelBuffer.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -73,6 +75,7 @@
 				6F089ABC2574F7010097D570 /* LaunchScreen.storyboard */,
 				6F089ABF2574F7010097D570 /* Info.plist */,
 				6F175B9026021EAD00A0F088 /* bitti.mlmodel */,
+				6F1C9B91260CAAFF00CCE60A /* bitti-2021-03-24-18-03-32.mlmodel */,
 				6F3CA58825C4833600422925 /* UIImage+CVPixelBuffer.swift */,
 				6F3CA58B25C4838800422925 /* CGImage+CVPixelBuffer.swift */,
 			);
@@ -86,6 +89,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 6F089AC22574F7010097D570 /* Build configuration list for PBXNativeTarget "MagazineDemo" */;
 			buildPhases = (
+				6F1C9B94260DE58E00CCE60A /* Update Core ML model file */,
 				6F089AAA2574F6FE0097D570 /* Sources */,
 				6F089AAB2574F6FE0097D570 /* Frameworks */,
 				6F089AAC2574F6FE0097D570 /* Resources */,
@@ -144,6 +148,27 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		6F1C9B94260DE58E00CCE60A /* Update Core ML model file */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Update Core ML model file";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\n\nAWS_PROFILE=solita-sandbox\nS3_MODEL_PATH=s3://magazine-monitor/Models\nMODEL_PLIST_FILE=$SRCROOT/$PROJECT_NAME/Model.plist\nMODEL_FILE=$SRCROOT/$PROJECT_NAME/bitti.mlmodel\n\necho \"pwd = $(pwd)\"\necho \"Model plist file = $MODEL_PLIST_FILE\"\n\n# The timestamp is encoded in the model filename in the format YYYY-MM-DD-HH-MM-SS.\n# Parse the AWS S3 listing, find the model files, and extract the latest timestamp.\nLATEST_MODEL_TIMESTAMP=$(aws s3 ls $S3_MODEL_PATH/ --profile $AWS_PROFILE | grep \"bitti-*\" | tr -s ' ' | cut -d' ' -f4 | cut -c7-25 | sort -r | head -n 1)\necho \"Latest model timestamp = $LATEST_MODEL_TIMESTAMP\"\n\n# Get the latest model timestamp we used from the Model.plist file.\n# Initially this plist file should contain an epoch timestamp that is older than all the actual deployed models.\n# You can initialize the plist file with `/usr/libexec/PlistBuddy -c \"Set: Timestamp 2021-01-01-00-00-00\"`.\n\n# Check if plist file exists. Create and initialize it if not.\nif test -f \"$MODEL_PLIST_FILE\"; then\n    echo \"Creating plist file and initializing it with epoch timestamp\" \n    /usr/libexec/PlistBuddy $MODEL_PLIST_FILE\n    /usr/libexec/PlistBuddy -c \"Set :Timestamp $LATEST_MODEL_TIMESTAMP\" $MODEL_PLIST_FILE    \nfi\n\nCURRENT_MODEL_TIMESTAMP=$(/usr/libexec/PlistBuddy -c \"Print :Timestamp\" $MODEL_PLIST_FILE)\necho \"Current model timestamp = $CURRENT_MODEL_TIMESTAMP\"\n\nif [ $LATEST_MODEL_TIMESTAMP > $CURRENT_MODEL_TIMESTAMP ]; then\n    echo \"Newer model is available, downloading from S3\"\n    aws s3 cp $S3_MODEL_PATH/bitti-$LATEST_MODEL_TIMESTAMP.mlmodel $MODEL_FILE --profile $AWS_PROFILE\n    /usr/libexec/PlistBuddy -c \"Set :Timestamp $LATEST_MODEL_TIMESTAMP\" $MODEL_PLIST_FILE\n    echo \"Model timestamp updated to $(/usr/libexec/Plistbuddy -c \"Print :Timestamp\" $MODEL_PLIST_FILE)\"\n    # git add bitti.mlmodel\n    # git commit -m \"Core ML model updated to latest version\"\nelse\n    echo \"Model is current\"\nfi\n\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		6F089AAA2574F6FE0097D570 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -155,6 +180,7 @@
 				6F3CA58C25C4838800422925 /* CGImage+CVPixelBuffer.swift in Sources */,
 				6F3CA58925C4833600422925 /* UIImage+CVPixelBuffer.swift in Sources */,
 				6F089AC8257502D00097D570 /* RecognitionViewController.swift in Sources */,
+				6F1C9B92260CAAFF00CCE60A /* bitti-2021-03-24-18-03-32.mlmodel in Sources */,
 				6F089AB42574F6FE0097D570 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
